@@ -123,10 +123,17 @@ async function startBot() {
             await sock.sendMessage(myNumber, { 
                 text: statusMsg,
                 contextInfo: {
+                    forwardingScore: 999,
+                    isForwarded: true,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: '120363423997837331@newsletter',
+                        newsletterName: config.BOT_NAME,
+                        serverMessageId: 1
+                    },
                     externalAdReply: {
                         title: "SYSTEM NOTIFICATION",
                         body: config.BOT_NAME + " - Active",
-                        thumbnailUrl: "https://telegra.ph/file/2026-status-icon.png", // Replace with your own logo link
+                        thumbnailUrl: "https://telegra.ph/file/2026-status-icon.png", 
                         sourceUrl: "https://whatsapp.com",
                         mediaType: 1,
                         renderLargerThumbnail: true,
@@ -167,7 +174,31 @@ async function startBot() {
 
         if (plugin) {
             try {
+                // Capture the original send function
+                const originalSendMessage = sock.sendMessage;
+                
+                // Temporarily override to inject Newsletter metadata
+                sock.sendMessage = async (jid, content, options = {}) => {
+                    if (typeof content === 'object' && content !== null) {
+                        content.contextInfo = {
+                            ...(content.contextInfo || {}),
+                            forwardingScore: 999,
+                            isForwarded: true,
+                            forwardedNewsletterMessageInfo: {
+                                newsletterJid: '120363423997837331@newsletter',
+                                newsletterName: config.BOT_NAME,
+                                serverMessageId: 1
+                            }
+                        };
+                    }
+                    return originalSendMessage.apply(sock, [jid, content, options]);
+                };
+
                 await plugin.execute(sock, m, args);
+
+                // Restore original function
+                sock.sendMessage = originalSendMessage;
+
             } catch (err) {
                 console.error("Plugin Error:", err);
                 await sock.sendMessage(from, { text: "❌ Internal Plugin Error." });
