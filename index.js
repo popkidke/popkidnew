@@ -153,14 +153,22 @@ async function startBot() {
         }
     });
 
-    // 5. Message Upsert (Command Handler)
+    // 5. Message Upsert (Command Handler) - FIXED FOR BETTER DETECTION
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (!m.message || m.key.fromMe) return;
         if (config.AUTO_READ) await sock.readMessages([m.key]);
 
         const from = m.key.remoteJid;
-        const body = (m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || "");
+        
+        // --- BUFFED DETECTION LOGIC ---
+        const body = (
+            m.message.conversation || 
+            m.message.extendedTextMessage?.text || 
+            m.message.imageMessage?.caption || 
+            m.message.videoMessage?.caption || 
+            ""
+        ).trim();
         
         if (!body.startsWith(config.PREFIX)) return;
 
@@ -201,7 +209,8 @@ async function startBot() {
 
             } catch (err) {
                 console.error("Plugin Error:", err);
-                await sock.sendMessage(from, { text: "❌ Internal Plugin Error." });
+                // Use originalSendMessage for error reporting
+                await originalSendMessage.apply(sock, [from, { text: "❌ Internal Plugin Error." }]);
             }
         }
     });
